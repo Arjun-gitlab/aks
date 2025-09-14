@@ -1,0 +1,6 @@
+controller:
+  replicaCount: 2
+  service:
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-resource-group: "<RESOURCE_GROUP_NAME>"
+    externalTrafficPolicy: Local

@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-deployment
+  labels:
+    app: patient
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: patient
+  template:
+    metadata:
+      labels:
+        app: patient
+    spec:
+      containers:
+      - name: patient
+        image: <ACR_LOGIN_SERVER>/patient-service:latest
+        ports:
+        - containerPort: 3000
+        readinessProbe:
+          httpGet: { path: "/", port: 3000 }
+          initialDelaySeconds: 5
+          periodSeconds: 10
