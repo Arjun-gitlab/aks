@@ -1,26 +1,35 @@
 # ---- Stage 1: Builder ----
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
+ 
+# Set working directory
 WORKDIR /app
  
-# Copy dependency definitions
+# Copy dependency definitions first (better cache)
 COPY package*.json ./
  
-# Install deps (ci if lockfile exists, otherwise install)
+# Install dependencies
+# If lockfile exists → npm ci (strict, reproducible)
+# Otherwise → npm install
 RUN if [ -f package.json ]; then npm ci; else npm install; fi
  
-# Copy source code
+# Copy rest of the source code
 COPY . .
  
 # ---- Stage 2: Runner ----
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
+ 
+# Set working directory
 WORKDIR /app
  
-# Copy only needed files from builder
+# Copy only necessary files from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/dist ./dist   # if you build into dist
-# Or COPY source files if no dist build:
+COPY --from=builder /app/dist ./dist   # for transpiled code (TypeScript, etc.)
+# Or, if you don’t build into dist, copy raw JS:
 # COPY --from=builder /app/*.js ./
  
+# Expose application port
 EXPOSE 3000
-CMD ["node", "server.js"]
+ 
+# Start the app
+CMD ["node", "service.js"]
