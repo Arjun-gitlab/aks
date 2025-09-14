@@ -30,17 +30,17 @@ jobs:
  
       - name: Build appointment image
         run: |
-          docker build -t $(AZURE_CONTAINER_REGISTRY)/appointment-service:latest ./microservices/appointment-service
+          docker build -t myacr.azurecr.io/appointment-service:latest ./microservices/appointment-service
           echo "Built appointment image"
  
       - name: Login to ACR
         run: az acr login --name $ACR_NAME
  
       - name: Push patient image
-        run: docker push $ACR_NAME.azurecr.io/patient-service:latest
+        run: docker push myacr.azurecr.io/patient-service:latest
  
       - name: Push appointment image
-        run: docker push $ACR_NAME.azurecr.io/appointment-service:latest
+        run: docker push myacr.azurecr.io/appointment-service:latest
  
   deploy-terraform:
     needs: build-and-push
