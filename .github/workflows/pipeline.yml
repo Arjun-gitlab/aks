@@ -25,7 +25,7 @@ jobs:
  
       - name: Build patient image
         run: |
-          docker build -t $ACR_NAME.azurecr.io/patient-service:latest ./microservices/patient-service
+          docker build -t $(AZURE_CONTAINER_REGISTRY)/patient-service:latest ./microservices/patient-service
           echo "Built patient image"
  
       - name: Build appointment image
