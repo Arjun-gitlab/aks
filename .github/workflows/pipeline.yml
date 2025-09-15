@@ -4,12 +4,6 @@ on:
   push:
     branches:
       - main
-    workflow_dispatch:            # Manual trigger from Actions tab
-    inputs:
-      environment:
-        description: 'Choose environment (dev, stag, prod)'
-        required: true
-        default: 'dev'
  
 env:
   ACR_NAME: ${{ secrets.ACR_NAME }}
@@ -48,77 +42,40 @@ jobs:
  
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
-
+ 
   deploy-terraform:
+    needs: build-and-push
     runs-on: ubuntu-latest
     env:
-      ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-      ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-      ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-      ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
- 
+       ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+       ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+       ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+       ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+       
     steps:
-      - name: Login to Azure
+      - uses: actions/checkout@v3
+ 
+      - name: Azure login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
  
-      - name: Derive backend names
-        id: derive
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.9.5
+ 
+      - name: Terraform Init & Apply (dev)
+        working-directory: terraform/envs/dev
         run: |
-          ENV="${{ github.event.inputs.environment }}"
+          terraform init \
+            -backend-config="resource_group_name=${{ env.TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ env.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ env.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=dev.terraform.tfstate"
  
-          BOOTSTRAP_RG="tfstate-${ENV}-rg"
-          STORAGE_ACCOUNT_NAME="tfstate${ENV}sa"
-          CONTAINER_NAME="tfstate"
+          terraform apply -auto-approve
  
-          echo "BOOTSTRAP_RG=$BOOTSTRAP_RG" >> $GITHUB_ENV
-          echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
- 
-      - name: Ensure backend RG + Storage Account exist
-        run: |
-          az group show --name $BOOTSTRAP_RG >/dev/null 2>&1 || \
-            az group create --name $BOOTSTRAP_RG --location eastus
- 
-          az storage account show --name $STORAGE_ACCOUNT_NAME --resource-group $BOOTSTRAP_RG >/dev/null 2>&1 || \
-            az storage account create \
-              --name $STORAGE_ACCOUNT_NAME \
-              --resource-group $BOOTSTRAP_RG \
-              --location eastus \
-              --sku Standard_LRS
- 
-          ACCOUNT_KEY=$(az storage account keys list --resource-group $BOOTSTRAP_RG --account-name $STORAGE_ACCOUNT_NAME --query '[0].value' -o tsv)
-          az storage container create \
-            --name $CONTAINER_NAME \
-            --account-name $STORAGE_ACCOUNT_NAME \
-            --account-key $ACCOUNT_KEY
- 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: bootstrap
-    env:
-      ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-      ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-      ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-      ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
- 
-    steps:
-      - uses: actions/checkout@v3
-      - uses: hashicorp/setup-terraform@v2
- 
-      - name: Terraform Init
-        working-directory: terraform/envs/${{ github.event.inputs.environment }}
-        run: terraform init -reconfigure
- 
-      - name: Select/Create Workspace
-        working-directory: terraform/envs/${{ github.event.inputs.environment }}
-        run: terraform workspace select "${{ github.event.inputs.environment}}" || terraform workspace new "${{ github.event.inputs.environment}}"
- 
-      - name: Terraform Apply
-        working-directory: terraform/envs/${{ github.event.inputs.environment }}
-        run: terraform apply -auto-approve -var-file="terraform.tfvars"
-
   deploy-aks:
     needs: deploy-terraform
     runs-on: ubuntu-latest
