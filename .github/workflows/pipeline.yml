@@ -34,7 +34,7 @@ jobs:
           echo "Built appointment image"
  
       - name: Login to ACR
-        run: az acr login --name $ACR_NAME
+        run: az acr login --name myacr
  
       - name: Push patient image
         run: docker push myacr.azurecr.io/patient-service:latest
