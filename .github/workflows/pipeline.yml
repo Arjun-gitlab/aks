@@ -44,42 +44,32 @@ jobs:
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
   deploy-terraform:
-    needs: build-and-push
     runs-on: ubuntu-latest
- 
-    # 👇 All these env vars will be available to every step in this job
     env:
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+      ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+      ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+      ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
  
     steps:
-      # Checkout repo
       - uses: actions/checkout@v3
  
-      # Azure login (use service principal JSON from Azure portal)
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
  
- 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.9.5
  
-      - name: Terraform Init & Apply (dev)
-        working-directory: terraform/envs/dev
-        run: |
-          terraform init \
-            -backend-config="resource_group_name=${{ env.TF_BACKEND_RG }}" \
-            -backend-config="storage_account_name=${{ env.TF_BACKEND_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ env.TF_BACKEND_CONTAINER }}" \
-            -backend-config="key=dev.terraform.tfstate"
+      - name: Terraform Init
+        run: terraform init
  
-          terraform apply -auto-approve
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+ 
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
  
   deploy-aks:
     needs: deploy-terraform
