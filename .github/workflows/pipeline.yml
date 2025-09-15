@@ -43,9 +43,18 @@ jobs:
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
-  deploy-terraform:
+ deploy-terraform:
     runs-on: ubuntu-latest
+      on:
+  workflow_dispatch:            # Manual trigger from Actions tab
+    inputs:
+      environment:
+        description: 'Choose environment (dev, stag, prod)'
+        required: true
+        default: 'dev'
+        
     env:
+      # Azure credentials for Terraform (Service Principal)
       ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
       ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
       ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
@@ -62,11 +71,35 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
  
+      - name: Prepare Environment
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          echo "Deploying to environment: $ENV"
+          # Copy environment-specific backend file into root so terraform init uses it
+          cp terraform/envs/$ENV/backend.tf terraform/backend.tf
+        shell: bash
+ 
       - name: Terraform Init
+        working-directory: terraform
         run: terraform init
  
+      - name: Select/Create Workspace
+        working-directory: terraform
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          terraform workspace select "$ENV" || terraform workspace new "$ENV"
+        shell: bash
+ 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        working-directory: terraform
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          # if you have tfvars per env (e.g. terraform/envs/dev/dev.tfvars)
+          if [ -f "envs/$ENV/$ENV.tfvars" ]; then
+            terraform apply -auto-approve -var-file=envs/$ENV/$ENV.tfvars
+          else
+            terraform apply -auto-approve
+          fi
  
   deploy-aks:
     needs: deploy-terraform
