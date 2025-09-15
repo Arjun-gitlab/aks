@@ -1,18 +1,17 @@
-name: AKS Deployment Pipeline
+name: CI-CD Pipeline
  
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
  
 env:
+  ACR_NAME: ${{ secrets.ACR_NAME }}
   TF_BACKEND_RG: ${{ secrets.TF_BACKEND_RG }}
   TF_BACKEND_STORAGE_ACCOUNT: ${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}
   TF_BACKEND_CONTAINER: ${{ secrets.TF_BACKEND_CONTAINER }}
-  ACR_NAME: ${{ secrets.ACR_NAME }}
   AKS_RG: ${{ secrets.AKS_RG }}
-  AKS_NAME: ${{ secrets.AKS_NAME }}
-  DOMAIN: ${{ secrets.DOMAIN }}
+  AKS_CLUSTER: ${{ secrets.AKS_CLUSTER }}
  
 jobs:
   build-and-push:
@@ -20,26 +19,26 @@ jobs:
     steps:
       - uses: actions/checkout@v3
  
-      - name: Log in to Azure
+      - name: Azure login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
  
-      - name: Build patient image
-        run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest ./microservices/patient-service
-          echo "✅ Built patient image"
- 
-      - name: Build appointment image
-        run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest ./microservices/appointment-service
-          echo "✅ Built appointment image"
- 
       - name: Login to ACR
         run: az acr login --name ${{ env.ACR_NAME }}
  
+      - name: Build patient image
+        run: |
+          echo "🔎 Using ACR: ${{ env.ACR_NAME }}"
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest ./microservices/patient-service
+ 
       - name: Push patient image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest
+ 
+      - name: Build appointment image
+        run: |
+          echo "🔎 Using ACR: ${{ env.ACR_NAME }}"
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest ./microservices/appointment-service
  
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
@@ -50,16 +49,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
  
-      - name: Set env TF backend vars
-        run: |
-          echo "TF_VAR_backend_rg=${{ env.TF_BACKEND_RG }}" >> $GITHUB_ENV
-          echo "TF_VAR_backend_storage_account=${{ env.TF_BACKEND_STORAGE_ACCOUNT }}" >> $GITHUB_ENV
-          echo "TF_VAR_backend_container=${{ env.TF_BACKEND_CONTAINER }}" >> $GITHUB_ENV
- 
       - name: Azure login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+ 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.9.5
  
       - name: Terraform Init & Apply (dev)
         working-directory: terraform/envs/dev
@@ -69,9 +67,10 @@ jobs:
             -backend-config="storage_account_name=${{ env.TF_BACKEND_STORAGE_ACCOUNT }}" \
             -backend-config="container_name=${{ env.TF_BACKEND_CONTAINER }}" \
             -backend-config="key=dev.terraform.tfstate"
+ 
           terraform apply -auto-approve
  
-  deploy-k8s:
+  deploy-aks:
     needs: deploy-terraform
     runs-on: ubuntu-latest
     steps:
@@ -83,21 +82,14 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
  
       - name: Get AKS credentials
-        run: az aks get-credentials --resource-group ${{ env.AKS_RG }} --name ${{ env.AKS_NAME }} --overwrite-existing
- 
-      - name: Replace ACR and Domain placeholders in manifests
         run: |
-          ACR="${{ env.ACR_NAME }}.azurecr.io"
-          DOMAIN="${{ env.DOMAIN }}"
+          az aks get-credentials \
+            --resource-group ${{ env.AKS_RG }} \
+            --name ${{ env.AKS_CLUSTER }} \
+            --overwrite-existing
  
-          echo "🔄 Replacing placeholders with ACR=$ACR and DOMAIN=$DOMAIN"
+      - name: Deploy patient service
+        run: kubectl apply -f k8s/patient-deployment.yaml
  
-          # Replace placeholders in Kubernetes YAML
-          sed -i "s|<ACR_LOGIN_SERVER>|$ACR|g" k8s/*.yaml
-          sed -i "s|<YOUR_DOMAIN>|$DOMAIN|g" k8s/*.yaml
- 
-          echo "✅ Placeholder replacement complete"
-          grep -R "<" k8s/ || echo "No placeholders left"
- 
-      - name: Apply Kubernetes manifests
-        run: kubectl apply -f k8s/
+      - name: Deploy appointment service
+        run: kubectl apply -f k8s/appointment-deployment.yaml
