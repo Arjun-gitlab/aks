@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    workflow_dispatch:            # Manual trigger from Actions tab
+    inputs:
+      environment:
+        description: 'Choose environment (dev, stag, prod)'
+        required: true
+        default: 'dev'
  
 env:
   ACR_NAME: ${{ secrets.ACR_NAME }}
@@ -43,15 +49,6 @@ jobs:
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
-on:
-  workflow_dispatch:            # Manual trigger from Actions tab
-    inputs:
-      environment:
-        description: 'Choose environment (dev, stag, prod)'
-        required: true
-        default: 'dev'
- 
-jobs:
   deploy-terraform:
     runs-on: ubuntu-latest
  
