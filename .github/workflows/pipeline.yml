@@ -50,7 +50,6 @@ jobs:
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
   deploy-terraform:
-    runs-on: ubuntu-latest
     name: Terraform Deploy
     bootstrap:
     runs-on: ubuntu-latest
