@@ -48,8 +48,7 @@ jobs:
  
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
- 
-  needs: deploy-terraform
+
   bootstrap:
     runs-on: ubuntu-latest
     env:
