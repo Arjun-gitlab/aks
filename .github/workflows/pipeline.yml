@@ -6,12 +6,15 @@ on:
       - main
  
 env:
+  # ACR + AKS details
   ACR_NAME: ${{ secrets.ACR_NAME }}
+  AKS_RG: ${{ secrets.AKS_RG }}
+  AKS_CLUSTER: ${{ secrets.AKS_CLUSTER }}
+ 
+  # Terraform backend storage details
   TF_BACKEND_RG: ${{ secrets.TF_BACKEND_RG }}
   TF_BACKEND_STORAGE_ACCOUNT: ${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}
   TF_BACKEND_CONTAINER: ${{ secrets.TF_BACKEND_CONTAINER }}
-  AKS_RG: ${{ secrets.AKS_RG }}
-  AKS_CLUSTER: ${{ secrets.AKS_CLUSTER }}
  
 jobs:
   build-and-push:
@@ -25,65 +28,66 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
  
       - name: Login to ACR
-        run: az acr login --name ${{ env.ACR_NAME }}
+        run: az acr login --name $ACR_NAME
  
       - name: Build patient image
         run: |
-          echo "🔎 Using ACR: ${{ env.ACR_NAME }}"
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest ./microservices/patient-service
+          echo "🔹 Using ACR: $ACR_NAME"
+          docker build -t $ACR_NAME.azurecr.io/patient-service:latest ./microservices/patient
  
       - name: Push patient image
-        run: docker push ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest
+        run: docker push $ACR_NAME.azurecr.io/patient-service:latest
  
       - name: Build appointment image
         run: |
-          echo "🔎 Using ACR: ${{ env.ACR_NAME }}"
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest ./microservices/appointment-service
+          echo "🔹 Using ACR: $ACR_NAME"
+          docker build -t $ACR_NAME.azurecr.io/appointment-service:latest ./microservices/appointment
  
       - name: Push appointment image
-        run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
+        run: docker push $ACR_NAME.azurecr.io/appointment-service:latest
  
-  name: Deploy Terraform
- 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
- 
-jobs:
-  terraform:
+  deploy-terraform:
+    needs: build-and-push
     runs-on: ubuntu-latest
- 
     env:
+      # Terraform azurerm provider auth
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
  
+      # Backend storage vars
+      TF_BACKEND_RG: ${{ secrets.TF_BACKEND_RG }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_CONTAINER: ${{ secrets.TF_BACKEND_CONTAINER }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
  
-      - name: Set up Terraform
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+ 
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.6.6   # or whichever version you use
+          terraform_version: 1.9.5
  
       - name: Terraform Init
-        run: terraform init -backend-config="resource_group_name=YOUR_BACKEND_RG" \
-                            -backend-config="storage_account_name=YOUR_STORAGE_ACCOUNT" \
-                            -backend-config="container_name=YOUR_CONTAINER" \
-                            -backend-config="key=terraform.tfstate"
- 
-      - name: Terraform Validate
-        run: terraform validate
+        working-directory: terraform/envs/dev
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=$TF_BACKEND_RG" \
+            -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TF_BACKEND_CONTAINER" \
+            -backend-config="key=dev.terraform.tfstate"
  
       - name: Terraform Plan
+        working-directory: terraform/envs/dev
         run: terraform plan -out=tfplan
  
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
+        working-directory: terraform/envs/dev
         run: terraform apply -auto-approve tfplan
  
   deploy-aks:
@@ -100,8 +104,8 @@ jobs:
       - name: Get AKS credentials
         run: |
           az aks get-credentials \
-            --resource-group ${{ env.AKS_RG }} \
-            --name ${{ env.AKS_CLUSTER }} \
+            --resource-group $AKS_RG \
+            --name $AKS_CLUSTER \
             --overwrite-existing
  
       - name: Deploy patient service
