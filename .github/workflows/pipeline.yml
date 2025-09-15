@@ -43,16 +43,18 @@ jobs:
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
- deploy-terraform:
-    runs-on: ubuntu-latest
-      on:
+on:
   workflow_dispatch:            # Manual trigger from Actions tab
     inputs:
       environment:
         description: 'Choose environment (dev, stag, prod)'
         required: true
         default: 'dev'
-        
+ 
+jobs:
+  deploy-terraform:
+    runs-on: ubuntu-latest
+ 
     env:
       # Azure credentials for Terraform (Service Principal)
       ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
