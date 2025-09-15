@@ -1,3 +1,5 @@
+name: AKS Deployment Pipeline
+ 
 on:
   push:
     branches: [ main ]
@@ -25,22 +27,22 @@ jobs:
  
       - name: Build patient image
         run: |
-          docker build -t myacr.azurecr.io/patient-service:latest ./microservices/patient-service
-          echo "Built patient image"
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest ./microservices/patient-service
+          echo "✅ Built patient image"
  
       - name: Build appointment image
         run: |
-          docker build -t myacr.azurecr.io/appointment-service:latest ./microservices/appointment-service
-          echo "Built appointment image"
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest ./microservices/appointment-service
+          echo "✅ Built appointment image"
  
       - name: Login to ACR
-        run: az acr login --name myacr
+        run: az acr login --name ${{ env.ACR_NAME }}
  
       - name: Push patient image
-        run: docker push myacr.azurecr.io/patient-service:latest
+        run: docker push ${{ env.ACR_NAME }}.azurecr.io/patient-service:latest
  
       - name: Push appointment image
-        run: docker push myacr.azurecr.io/appointment-service:latest
+        run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
   deploy-terraform:
     needs: build-and-push
@@ -62,10 +64,11 @@ jobs:
       - name: Terraform Init & Apply (dev)
         working-directory: terraform/envs/dev
         run: |
-          terraform init -backend-config="resource_group_name=${{ env.TF_BACKEND_RG }}" \
-                         -backend-config="storage_account_name=${{ env.TF_BACKEND_STORAGE_ACCOUNT }}" \
-                         -backend-config="container_name=${{ env.TF_BACKEND_CONTAINER }}" \
-                         -backend-config="key=dev.terraform.tfstate"
+          terraform init \
+            -backend-config="resource_group_name=${{ env.TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ env.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ env.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=dev.terraform.tfstate"
           terraform apply -auto-approve
  
   deploy-k8s:
@@ -80,14 +83,21 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
  
       - name: Get AKS credentials
-        run: az aks get-credentials --resource-group $AKS_RG --name $AKS_NAME --overwrite-existing
+        run: az aks get-credentials --resource-group ${{ env.AKS_RG }} --name ${{ env.AKS_NAME }} --overwrite-existing
  
-      - name: Replace ACR placeholder in manifests
+      - name: Replace ACR and Domain placeholders in manifests
         run: |
-          ACR=${{ env.ACR_NAME }}.azurecr.io
-          sed -i "s|<ACR_LOGIN_SERVER>|${ACR}|g" k8s/*.yaml
-          sed -i "s|<YOUR_DOMAIN>|${{ env.DOMAIN }}|g" k8s/*.yaml
+          ACR="${{ env.ACR_NAME }}.azurecr.io"
+          DOMAIN="${{ env.DOMAIN }}"
+ 
+          echo "🔄 Replacing placeholders with ACR=$ACR and DOMAIN=$DOMAIN"
+ 
+          # Replace placeholders in Kubernetes YAML
+          sed -i "s|<ACR_LOGIN_SERVER>|$ACR|g" k8s/*.yaml
+          sed -i "s|<YOUR_DOMAIN>|$DOMAIN|g" k8s/*.yaml
+ 
+          echo "✅ Placeholder replacement complete"
+          grep -R "<" k8s/ || echo "No placeholders left"
  
       - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f k8s/
+        run: kubectl apply -f k8s/
