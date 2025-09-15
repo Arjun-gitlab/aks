@@ -26,7 +26,7 @@ resource "azurerm_subnet" "private_1" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.private_subnet_1_cidr]
-  delegations {
+  delegation {
     name = "aks-delegation1"
     service_delegation {
       name = "Microsoft.ContainerService/managedClusters"
@@ -39,7 +39,7 @@ resource "azurerm_subnet" "private_2" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.private_subnet_2_cidr]
-  delegations {
+  delegation {
     name = "aks-delegation2"
     service_delegation {
       name = "Microsoft.ContainerService/managedClusters"
