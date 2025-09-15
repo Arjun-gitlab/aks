@@ -75,7 +75,7 @@ jobs:
           ENV="${{ github.event.inputs.environment }}"
           echo "Deploying to environment: $ENV"
           # Copy environment-specific backend file into root so terraform init uses it
-          cp terraform/envs/$ENV/backend.tf terraform/backend.tf
+          cp terraform/envs/dev/backend.tf terraform/backend.tf
         shell: bash
  
       - name: Terraform Init
