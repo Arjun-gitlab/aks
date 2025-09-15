@@ -46,9 +46,6 @@ jobs:
   deploy-terraform:
     needs: build-and-push
     runs-on: ubuntu-latest
-    jobs:
-  deploy-terraform:
-    runs-on: ubuntu-latest
  
     # 👇 All these env vars will be available to every step in this job
     env:
