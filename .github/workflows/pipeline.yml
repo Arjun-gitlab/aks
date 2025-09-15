@@ -49,9 +49,8 @@ jobs:
       - name: Push appointment image
         run: docker push ${{ env.ACR_NAME }}.azurecr.io/appointment-service:latest
  
-  deploy-terraform:
-    name: Terraform Deploy
-    bootstrap:
+jobs:
+  bootstrap:
     runs-on: ubuntu-latest
     env:
       ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
