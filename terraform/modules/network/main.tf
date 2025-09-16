@@ -40,12 +40,13 @@ resource "azurerm_subnet" "private_1" {
   delegation {
     name = "aks-delegation-1"
     service_delegation {
-      name = "Microsoft.ContainerService/managedClusters"
-      actions = [
-        "Microsoft.Network/virtualNetworks/subnets/join"
-      ]
-    }
-  }
+  name = "Microsoft.ContainerInstance/containerGroups"
+ 
+  actions = [
+    "Microsoft.Network/virtualNetworks/subnets/join/action"
+  ]
+ }
+}
 }
  
 # ===============================
@@ -60,12 +61,13 @@ resource "azurerm_subnet" "private_2" {
   delegation {
     name = "aks-delegation-2"
     service_delegation {
-      name = "Microsoft.ContainerService/managedClusters"
-      actions = [
-        "Microsoft.Network/virtualNetworks/subnets/join"
-      ]
-    }
+  name = "Microsoft.ContainerInstance/containerGroups"
+ 
+  actions = [
+    "Microsoft.Network/virtualNetworks/subnets/join/action"
+   ]
   }
+ }
 }
  
 # Public NSG allowing HTTP/HTTPS/SSH
