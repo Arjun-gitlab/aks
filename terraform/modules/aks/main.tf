@@ -18,8 +18,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
     type = "SystemAssigned"
   }
 
-  oms_agent {
-    log_analytics_workspace_id = var.log_analytics_workspace_id
+  dynamic "oms_agent" {
+    for_each = var.log_analytics_workspace_id != null ? [1] : []
+    content {
+      log_analytics_workspace_id = var.log_analytics_workspace_id
   }
 
   role_based_access_control_enabled = true
