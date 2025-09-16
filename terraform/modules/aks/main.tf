@@ -6,10 +6,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   resource_group_name = var.resource_group_name
   dns_prefix          = "${var.prefix}-k8s"
 
-  oms_agent {
-    log_analytics_workspace_id = var.log_analytics_workspace_id
-  }
- 
   default_node_pool {
     name            = "agentpool"
     node_count      = var.node_count
@@ -21,7 +17,11 @@ resource "azurerm_kubernetes_cluster" "aks" {
   identity {
     type = "SystemAssigned"
   }
- 
+
+  oms_agent {
+    log_analytics_workspace_id = var.log_analytics_workspace_id
+  }
+
   role_based_access_control_enabled = true
  
   network_profile {
