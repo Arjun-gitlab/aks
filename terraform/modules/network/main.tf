@@ -28,46 +28,18 @@ resource "azurerm_subnet" "public_2" {
   address_prefixes     = [var.public_subnet_2_cidr]
 }
  
-# ===============================
-# Private Subnet 1 (with AKS delegation)
-# ===============================
 resource "azurerm_subnet" "private_1" {
   name                 = "${var.prefix}-private-1"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.private_subnet_1_cidr]
- 
-  delegation {
-    name = "aks-delegation-1"
-    service_delegation {
-  name = "Microsoft.ContainerInstance/containerGroups"
- 
-  actions = [
-    "Microsoft.Network/virtualNetworks/subnets/join/action"
-  ]
  }
-}
-}
  
-# ===============================
-# Private Subnet 2 (with AKS delegation)
-# ===============================
 resource "azurerm_subnet" "private_2" {
   name                 = "${var.prefix}-private-2"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.private_subnet_2_cidr]
- 
-  delegation {
-    name = "aks-delegation-2"
-    service_delegation {
-  name = "Microsoft.ContainerInstance/containerGroups"
- 
-  actions = [
-    "Microsoft.Network/virtualNetworks/subnets/join/action"
-   ]
-  }
- }
 }
  
 # Public NSG allowing HTTP/HTTPS/SSH
