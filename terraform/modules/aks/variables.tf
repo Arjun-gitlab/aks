@@ -12,4 +12,17 @@ variable "log_analytics_workspace_id" {
   type        = string
   description = "The ID of the Log Analytics Workspace for AKS monitoring"
 }
-variable "acr_id" {}
+variable "acr_id" {
+  description = "The ID of the Azure Container Registry"
+  type        = string
+}
+ 
+variable "acr_login_server" {
+  description = "The login server of the Azure Container Registry"
+  type        = string
+}
+ 
+variable "acr_admin_username" {
+  description = "The admin username of the Azure Container Registry"
+  type        = string
+}
