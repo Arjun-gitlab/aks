@@ -23,6 +23,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     content {
       log_analytics_workspace_id = var.log_analytics_workspace_id
   }
+ }
 
   role_based_access_control_enabled = true
  
