@@ -4,6 +4,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   name                = "${var.prefix}-aks"
   location            = var.location
   resource_group_name = var.resource_group_name
+  log_analytics_workspace_id = var.log_analytics_workspace_id
   dns_prefix          = "${var.prefix}-k8s"
  
   default_node_pool {
