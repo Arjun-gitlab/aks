@@ -10,7 +10,6 @@ variable "node_zones" {
 }
 variable "log_analytics_workspace_id" {
   type        = string
-  description = "Log Analytics Workspace ID for AKS monitoring (optional)"
-  default     = null
+  description = "The ID of the Log Analytics Workspace for AKS monitoring"
 }
 variable "acr_id" {}
