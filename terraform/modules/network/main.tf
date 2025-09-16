@@ -1,4 +1,3 @@
-# VNet and subnets (public/private across two AZs via separate subnets)
 resource "azurerm_virtual_network" "vnet" {
   name                = "${var.prefix}-vnet"
   resource_group_name = var.resource_group_name
@@ -6,7 +5,7 @@ resource "azurerm_virtual_network" "vnet" {
   address_space       = [var.vnet_cidr]
 }
  
-# Two public subnets (for LoadBalancers / ingress) and two private subnets (for AKS nodes)
+# Public Subnet 1
 resource "azurerm_subnet" "public_1" {
   name                 = "${var.prefix}-public-1"
   resource_group_name  = var.resource_group_name
@@ -14,6 +13,7 @@ resource "azurerm_subnet" "public_1" {
   address_prefixes     = [var.public_subnet_1_cidr]
 }
  
+# Public Subnet 2
 resource "azurerm_subnet" "public_2" {
   name                 = "${var.prefix}-public-2"
   resource_group_name  = var.resource_group_name
@@ -21,28 +21,42 @@ resource "azurerm_subnet" "public_2" {
   address_prefixes     = [var.public_subnet_2_cidr]
 }
  
+# Private Subnet 1 (delegated to AKS)
 resource "azurerm_subnet" "private_1" {
   name                 = "${var.prefix}-private-1"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.private_subnet_1_cidr]
+ 
   delegation {
-    name = "aks-delegation1"
+    name = "aks-delegation"
+ 
     service_delegation {
       name = "Microsoft.ContainerService/managedClusters"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join",
+        "Microsoft.Network/virtualNetworks/subnets/action"
+      ]
     }
   }
 }
  
+# Private Subnet 2 (delegated to AKS)
 resource "azurerm_subnet" "private_2" {
   name                 = "${var.prefix}-private-2"
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [var.private_subnet_2_cidr]
+ 
   delegation {
     name = "aks-delegation2"
+ 
     service_delegation {
       name = "Microsoft.ContainerService/managedClusters"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join",
+        "Microsoft.Network/virtualNetworks/subnets/action"
+      ]
     }
   }
 }
