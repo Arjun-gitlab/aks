@@ -48,5 +48,5 @@ module "aks" {
   node_vm_size        = var.node_vm_size
   node_zones          = [3]
   log_analytics_workspace_id = azurerm_log_analytics_workspace.insights.id
-  acr_id              = module.acr.acr_login_server != "" ? module.acr.acr_login_server : null
+  acr_id              = module.acr.acr.id
 }
