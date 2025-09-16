@@ -8,5 +8,8 @@ variable "node_zones" {
   type    = list(string)
   default = ["1", "2"]
 }
-variable "log_analytics_workspace_id" {}
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "The ID of the Log Analytics Workspace for AKS monitoring"
+}
 variable "acr_id" {}
