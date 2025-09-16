@@ -9,8 +9,8 @@ resource "azurerm_resource_group" "rg" {
 }
  
 # Log Analytics
-resource "azurerm_log_analytics_workspace" "law" {
-  name                = "${var.prefix}-law"
+resource "azurerm_log_analytics_workspace" "insights" {
+  name                = "${var.prefix}-insights"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
   retention_in_days   = 30
@@ -47,6 +47,6 @@ module "aks" {
   node_count          = var.node_count
   node_vm_size        = var.node_vm_size
   node_zones          = ["1","2"]
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.insights.id
   acr_id              = module.acr.acr_login_server != "" ? module.acr.acr_login_server : null
 }
