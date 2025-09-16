@@ -19,8 +19,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
    oms_agent {
-    enabled = true
-    log_analytics_workspace_id = var.log_analytics_workspace_id
+     log_analytics_workspace_id = var.log_analytics_workspace_id
   }
 
 
@@ -33,11 +32,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
     dns_service_ip = "10.1.0.10"
   }
  
- oms_agent {
-    enabled = true
-    log_analytics_workspace_id = var.log_analytics_workspace_id
-  }
-
   azure_policy_enabled = true
 }
  
