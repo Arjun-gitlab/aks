@@ -18,9 +18,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
     type = "SystemAssigned"
   }
 
-   oms_agent {
-     log_analytics_workspace_id = var.log_analytics_workspace_id
+  addon_profile {
+  oms_agent {
+    enabled                    = true
+    log_analytics_workspace_id = var.log_analytics_workspace_id
   }
+ }
 
 
   role_based_access_control_enabled = true
