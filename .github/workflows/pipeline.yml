@@ -74,7 +74,7 @@ jobs:
             -backend-config="container_name=${{ env.TF_BACKEND_CONTAINER }}" \
             -backend-config="key=dev.terraform.tfstate"
  
-          terraform apply -auto-approve
+          terraform destroy -auto-approve
  
   deploy-aks:
     needs: deploy-terraform
@@ -95,7 +95,7 @@ jobs:
             --overwrite-existing
  
       - name: Deploy patient service
-        run: kubectl apply -f k8s/patient-deployment.yaml
+        run: kubectl destroy -f k8s/patient-deployment.yaml
  
       - name: Deploy appointment service
-        run: kubectl apply -f k8s/appointment-deployment.yaml
+        run: kubectl destroy -f k8s/appointment-deployment.yaml
